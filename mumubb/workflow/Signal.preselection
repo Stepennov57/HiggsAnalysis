@@ -1,0 +1,254 @@
+#define Signal_cxx
+
+
+
+#include "Signal.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+#include "cuts.h"
+
+
+
+double dr(double eta1, double phi1, double eta2, double phi2)
+{
+//Double_t M_PI = 3.14159265358979323846;
+    Double_t M_PI2 = 3.14159265358979323846*2.;
+double deta = fabs(eta1 - eta2);
+double dphi = fabs(phi1 - phi2);
+ if( dphi > M_PI ) dphi = M_PI2 - dphi;
+return sqrt(deta*deta + dphi*dphi);
+}
+
+void Signal::Loop()
+{
+//   In a ROOT session, you can do:
+//      root> .L Signal.C
+//      root> Signal t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+
+
+#include "hists.icc"
+
+ Float_t myfile = 0.;
+
+bool isMC = true;
+int matchedSignal = 0;
+int matchedSignalAK4 = 0;
+int genSignal = 0;
+int counter = 0;
+int ak4Events = 0;
+int ak8Events = 0;
+
+
+
+double centralMass = 15.0;
+
+TFile *MyFile = new TFile("/afs/cern.ch/work/a/astepenn/haa/CMSSW_8_0_26/src/Signal_preselection_v5.root","recreate");
+RoccoR  rc("RoccoR2016.txt");
+TTree *newtree = fChain->CloneTree(0);
+
+   if (fChain == 0) return;
+
+TLorentzVector Vb1;
+TLorentzVector Vb2;
+TLorentzVector VA1;
+TLorentzVector VA2;
+ TLorentzVector VJP;
+ TLorentzVector VJPtmp;
+TLorentzVector VJJ;
+TLorentzVector VJJtmp;
+ TLorentzVector VMuP;
+  TLorentzVector VMuM;
+  TLorentzVector VMuMu;
+TLorentzVector VJM; 
+TLorentzVector VSV;
+TLorentzVector VSVs;
+TLorentzVector VSVstmp;
+TLorentzVector VH;
+TLorentzVector VMuMuJJ;
+
+TLorentzVector VM1;
+TLorentzVector VM2;
+TLorentzVector VS1;
+TLorentzVector VS2;
+
+TLorentzVector VS1tmp;
+TLorentzVector VS2tmp;
+
+   Long64_t nentries = fChain->GetEntriesFast();
+
+   Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+//for (Long64_t jentry=0; jentry<300000;jentry++) {  
+    Long64_t ientry = LoadTree(jentry);
+      if (ientry < 0) break;
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+      // if (Cut(ientry) < 0) continue;
+
+
+ if(ientry == 0) {
+cout<<" New file "<<myfile<<endl;
+myfile++;}
+
+double w = 1.0;
+if(weight < 0) w = -1.0;
+int jetsCounter = 0;
+//if(event != 23) continue;
+
+if(isMC){
+if(int(lumi) < 50)
+{
+w = w*wPu[int(lumi)];
+}
+}
+
+Int_t MUMINUS=-1;
+     Int_t nminus=0;
+     Int_t MUPLUS=-1;
+     Int_t nplus=0;
+     Int_t nZgood = 0;
+Double_t ptm =0;
+Double_t ptp =0;
+
+Double_t SFm =0;
+Double_t SFp =0;
+
+double ptMax = 0;
+double ptMax2 = 0;
+
+double sMax1 = 0;
+double sMax2 = 0;
+
+//cout<<"new events:  "<<endl;
+
+//======================================================= muons block ==========================================================
+
+#include "muonsBlockTuple.icc"
+if(VMuMu.M() <  12.0 || VMuMu.M() > 40.0) continue;
+//========================================================================================================================================
+newtree->Fill();
+/*
+//==============================================================================================================
+VA1.SetPxPyPzE(GenPx[3], GenPy[3], GenPz[3], GenE[3]);
+
+
+double dR = 999;
+for(Int_t jj=0;jj<NumRecoJetsAK8PFCorrected; jj++) {
+//============================ jet id
+
+Float_t Pt1 =  JetRecoPtAK8PFCorrected[jj];
+        Float_t Et1 =  JetRecoEtAK8PFCorrected[jj];
+        Float_t Eta1 = JetRecoEtaAK8PFCorrected[jj];
+        Float_t Phi1 = JetRecoPhiAK8PFCorrected[jj];
+VJPtmp.SetPtEtaPhiE(Pt1, Eta1, Phi1, Et1*cosh(Eta1));
+
+if(VJPtmp.Pt() < 30.0) continue;
+if(fabs(VJPtmp.Eta()) > 2.4) continue;
+if(fabs(VJPtmp.M() - centralMass) > 10.0) continue;
+
+if(dr(VMuP.Eta(), VMuP.Phi(), VJPtmp.Eta(), VJPtmp.Phi()) < 0.8) continue;
+if(dr(VMuM.Eta(), VMuM.Phi(), VJPtmp.Eta(), VJPtmp.Phi()) < 0.8) continue;
+
+int nSVs = 0;
+double S1 = 0;
+double S2 = 0;
+	for(int w_i=0; w_i<NSV; w_i++)
+                        {
+                        if((*sv_mass)[w_i] == 0 || (*sv_significance)[w_i] == 0) continue;
+                        double sv_e = sqrt(pow((*sv_pt_x)[w_i],2) + pow((*sv_pt_y)[w_i],2) + pow((*sv_pt_z)[w_i],2) + pow((*sv_mass)[w_i],2) );
+                        VSV.SetPxPyPzE((*sv_pt_x)[w_i], (*sv_pt_y)[w_i], (*sv_pt_z)[w_i], sv_e);
+                        if(dr(VJPtmp.Eta(), VJPtmp.Phi(), VSV.Eta(), VSV.Phi()) < 0.8)
+                        {
+			  if((*sv_significance)[w_i] > S1)
+                                {
+                                if(S1 > S2) {S2 = S1; VS2tmp = VS1tmp;}
+                                S1 = (*sv_significance)[w_i];
+                                VS1tmp = VSV;
+                                }
+                                else
+                                {
+                                if((*sv_significance)[w_i] > S2) {S2 = (*sv_significance)[w_i];  VS2tmp = VSV;}
+                                }
+                        nSVs++;
+                        }
+                        }
+
+if(nSVs < 2) continue;
+
+jetsCounter++;
+
+	if(ptMax < VJPtmp.Pt())
+	{
+	sMax1 = S1;
+	sMax2 = S2;
+	ptMax = VJPtmp.Pt();
+	VJP = VJPtmp;
+	VS1 = VS1tmp;
+	VS2 = VS2tmp;
+	}
+
+
+}
+
+//=======================================================================================================================
+if(ptMax > 0)
+{
+DR = dr(VS1.Eta(), VS1.Phi(), VM2.Eta(), VM2.Phi());
+ W = w;
+SG1 = sMax1;
+SG2 = sMax2;
+SVM1 = VS1.M();
+SVM2 = VS2.M();
+ MZ = VMuMu.M();
+ MJ = VJP.M();
+VH =  VJP + VMuMu;
+ MET = pfMET;
+ MZJ = VH.M();
+tVars->Fill();
+}
+
+//========================================================================================================================
+
+
+
+
+hNJets->Fill(jetsCounter,w);
+if(ptMax > 0) counter++;
+*/
+}
+/*
+cout<<"counter:  "<<counter<<endl;
+cout<<"integral:  "<<hNSV->Integral(3,10)<<endl;
+hNJets->Write();
+hPtJ1->Write();
+hPtJ2->Write();
+hEtaJ1->Write();
+hEtaJ2->Write();
+hNSVs1->Write();
+hNSVs2->Write();
+tVars->Write();
+*/
+newtree->AutoSave();
+
+}
+

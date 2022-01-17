@@ -1,0 +1,233 @@
+import FWCore.ParameterSet.Config as cms
+
+process = cms.Process("Demo")
+process.load("FWCore.MessageService.MessageLogger_cfi")
+process.load('Configuration.StandardSequences.Services_cff')
+process.load('Configuration/StandardSequences/FrontierConditions_GlobalTag_cff')
+from Configuration.AlCa.GlobalTag import GlobalTag
+process.load("JetMETCorrections.Type1MET.correctedMet_cff")
+process.load('JetMETCorrections.Configuration.DefaultJEC_cff')
+process.load("JetMETCorrections/Configuration/JetCorrectionServices_cff")
+process.load("JetMETCorrections.Configuration.JetCorrectionServicesAllAlgos_cff")
+process.load('RecoJets.Configuration.RecoJPTJets_cff')
+process.load('JetMETCorrections.Configuration.CorrectedJetProducersAllAlgos_cff')
+process.load('JetMETCorrections.Configuration.CorrectedJetProducers_cff')
+process.load('JetMETCorrections.Configuration.JetCorrectors_cff')
+
+#process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
+from Configuration.AlCa.GlobalTag import GlobalTag
+#process.GlobalTag = GlobalTag(process.GlobalTag, '80X_mcRun2_asymptotic_2016_miniAODv2')
+#process.GlobalTag.globaltag = "80X_dataRun2_Prompt_ICHEP16JEC_v0"
+process.load('Configuration/StandardSequences/Services_cff')
+process.load('FWCore/MessageService/MessageLogger_cfi')
+process.load("Configuration.StandardSequences.GeometryDB_cff")
+process.load('Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff')
+process.load('Configuration/StandardSequences/Reconstruction_cff')
+process.load('Configuration/StandardSequences/EndOfProcess_cff')
+process.load('Configuration/StandardSequences/FrontierConditions_GlobalTag_cff')
+process.load('Configuration/EventContent/EventContent_cff')
+process.load('RecoJets.Configuration.RecoJPTJets_cff')
+process.load('JetMETCorrections.Configuration.CorrectedJetProducersAllAlgos_cff')
+process.load('JetMETCorrections.Configuration.CorrectedJetProducers_cff')
+process.load('JetMETCorrections.Configuration.JetCorrectors_cff')
+
+process.load("JetMETCorrections.Type1MET.correctionTermsPfMetType1Type2_cff")
+process.load("JetMETCorrections.Type1MET.correctionTermsPfMetType0PFCandidate_cff")
+process.load("JetMETCorrections.Type1MET.correctionTermsPfMetType0RecoTrack_cff")
+process.load("JetMETCorrections.Type1MET.correctionTermsPfMetMult_cff")
+process.load("JetMETCorrections.Type1MET.correctedMet_cff")
+
+process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
+#process.GlobalTag.globaltag = "80X_dataRun2_Prompt_v13"
+process.GlobalTag = GlobalTag(process.GlobalTag, '94X_dataRun2_v10')
+
+primaryVertexCollection = cms.InputTag("offlineSlimmedPrimaryVertices")
+secondaryVertexCollection = cms.InputTag('slimmedSecondaryVertices')
+jetCollection = cms.InputTag("slimmedJets")
+
+
+
+
+process.load("RecoBTag.Configuration.RecoBTag_cff")
+from RecoBTag.Configuration.RecoBTag_cff import *
+from RecoBTag.SoftLepton.softLepton_cff import *
+from RecoBTag.ImpactParameter.impactParameter_cff import *
+from RecoBTag.SecondaryVertex.secondaryVertex_cff import *
+from RecoBTag.Combined.combinedMVA_cff import *
+from RecoBTag.CTagging.RecoCTagging_cff import *
+
+from PhysicsTools.PatAlgos.patTemplate_cfg import *
+
+process = cms.Process("Demo")
+
+process.load("FWCore.MessageService.MessageLogger_cfi")
+
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10) )
+
+process.source = cms.Source("PoolSource",
+    # replace 'myfile.root' with the source file you want to use
+    fileNames = cms.untracked.vstring(
+#'/store/data/Run2016B/SingleElectron/AOD/07Aug17_ver1-v1/110000/EAD3A7EA-258C-E711-AE79-44A842CFC9A5.root'
+'/store/data/Run2016B/SingleMuon/MINIAOD/07Aug17_ver1-v1/70000/F2842F32-1E7F-E711-9A6D-0025905AA9F0.root'
+  )
+#eventsToProcess = cms.untracked.VEventRange('275886:47707831')
+)
+
+from CondCore.DBCommon.CondDBSetup_cfi import *
+#from CondCore.CondDB.CondDB_cfi import *
+process.jec = cms.ESSource("PoolDBESSource",CondDBSetup,
+###                      connect = cms.string('sqlite_file:src/CondFormats/JetMETObjects/data/START53_V28_MC_L1FastL2L3.db'),
+                      connect = cms.string('sqlite_file:Summer16_07Aug2017All_V11_DATA.db'),
+                        ##connect = 'frontier://FrontierPrep/CMS_COND_PHYSICSTOOLS',
+                          toGet =  cms.VPSet(
+        cms.PSet(record = cms.string("JetCorrectionsRecord"),
+#                         tag = cms.string("JetCorrectorParametersCollection_Summer16_23Sep2016BCDV4_DATA_AK4PF"),
+                         tag = cms.string("JetCorrectorParametersCollection_Summer16_07Aug2017All_V11_DATA_AK4PF"),
+                         label=cms.untracked.string("AK4PF")
+                           ),
+        cms.PSet(record = cms.string("JetCorrectionsRecord"),
+#                         tag = cms.string("JetCorrectorParametersCollection_Summer16_23Sep2016BCDV4_DATA_AK4PFchs"),
+                         tag = cms.string("JetCorrectorParametersCollection_Summer16_07Aug2017All_V11_DATA_AK4PFchs"),
+                         label=cms.untracked.string("AK4PFchs")
+                           )
+                                         )
+                           )
+process.es_prefer_jec = cms.ESPrefer("PoolDBESSource","jec")
+
+
+process.demo = cms.EDAnalyzer('Select',
+                                        isMC = cms.bool(False),
+					updatedPatJetsUpdatedJEC = cms.InputTag("updatedPatJetsTransientCorrectedUpdatedJEC")
+)
+
+process.es_prefer_jec = cms.ESPrefer("PoolDBESSource","jec")
+
+from JetMETCorrections.Configuration.JetCorrectors_cff import *
+
+process.load("RecoJets.JetProducers.PileupJetID_cfi")
+process.pileupJetId.jets=cms.InputTag("ak4PFJetsCHS")
+#process.pileupJetId.jets=cms.InputTag("JetPlusTrackZSPCorJetAntiKt4")
+process.pileupJetId.inputIsCorrected=False
+process.pileupJetId.applyJec=True
+process.pileupJetId.vertexes=cms.InputTag("offlinePrimaryVertices")
+process.dump=cms.EDAnalyzer('EventContentAnalyzer')
+
+
+#process.ak4JetTracksAssociatorAtVertex.useAssigned = cms.bool(True)
+#process.ak4JetTracksAssociatorAtVertex.pvSrc = cms.InputTag("offlinePrimaryVertices")
+
+from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
+
+bTagInfos = [
+'pfInclusiveSecondaryVertexFinderTagInfos',
+'pfSecondaryVertexTagInfos',
+'pfImpactParameterTagInfos'
+]
+
+
+updateJetCollection(
+   process,
+   jetSource = cms.InputTag('slimmedJets'),
+   labelName = 'UpdatedJEC',
+   pvSource = cms.InputTag("offlineSlimmedPrimaryVertices"),
+   svSource = cms.InputTag('slimmedSecondaryVertices'),
+ #btagInfos = bTagInfos,
+   #bTagInfos = ['pfImpactParameterTagInfos', 'pfInclusiveSecondaryVertexFinderTagInfos', 'deepNNTagInfos'],
+	btagDiscriminators = ['pfCombinedInclusiveSecondaryVertexV2BJetTags'],
+   jetCorrections = ('AK4PFchs', cms.vstring(['L1FastJet', 'L2Relative', 'L3Absolute']), 'None'),  # Update: Safe to always add 'L2L3Residual' as MC contains dummy L2L3Residual corrections (always set to 1),
+#   jetCorrections = ('AK4PFchs', cms.vstring(['L1FastJet',''L2L3Residual'' 'L2Relative']), 'None'),
+#['pfCombinedMVAV2BJetTags']
+)
+
+
+#updateJetCollection(
+#   process,
+#   jetSource = cms.InputTag('slimmedJets'),
+#}
+
+
+updateJetCollection(
+   process,
+   labelName = 'UpdatedJEC',
+   jetSource = cms.InputTag('slimmedJets'),
+   pvSource = cms.InputTag("offlineSlimmedPrimaryVertices"),
+   svSource = cms.InputTag('slimmedSecondaryVertices'),
+ btagInfos = bTagInfos,
+   btagDiscriminators = None,
+   jetCorrections = ('AK4PFchs', cms.vstring([]), 'None'),  # Update: Safe to always add 'L2L3Residual' as MC contains dummy L2L3Residual cor$
+)
+
+
+process.updatedPatJetsUpdatedJEC.userData.userInts.src = ['pileupJetIdUpdated:cutbasedId']
+process.updatedPatJetsUpdatedJEC.userData.userInts.src = ['pileupJetIdUpdated:fullId']
+process.updatedPatJetsUpdatedJEC.userData.userFloats.src = ['pileupJetIdUpdated:fullDiscriminant']
+#process.updatedPatJetsUpdatedJEC.addBTagInfo     = cms.bool(True)
+
+
+if hasattr(process,'updatedPatJetsUpdatedJEC'):
+	process.updatedPatJetsUpdatedJEC.addTagInfos = cms.bool(True) 
+	process.updatedPatJetsUpdatedJEC.addBTagInfo = cms.bool(True)
+else:
+	raise ValueError('I could not find updatedPatJetsUpdatedJEC to embed the tagInfos, please check the cfg')
+
+
+
+
+process.load("RecoJets.JetProducers.PileupJetID_cfi")
+process.pileupJetIdUpdated = process.pileupJetId.clone(
+  jets=cms.InputTag("slimmedJets"),
+  inputIsCorrected=True,
+  applyJec=True,
+  vertexes=cms.InputTag("offlineSlimmedPrimaryVertices")
+  )
+#process.updatedPatJetsUpdatedJEC.userData.userFloats.src += ['pileupJetIdUpdated:fullDiscriminant', 'pileupJetIdUpdated:fullId']
+
+#getattr(process,'updatedPatJetsUpdatedJEC').addTagInfos = cms.bool(True)
+
+
+
+#process.pfInclusiveSecondaryVertexFinderCvsLTagInfos.extSVCollection = cms.InputTag("slimmedSecondaryVertices")
+process.updatedPatJetsTransientCorrectedUpdatedJEC.addTagInfos = cms.bool(True)
+#process.pfInclusiveSecondaryVertexFinderTagInfos.extSVCollection = secondaryVertexCollection
+getattr(process,'patJetCorrFactorsTransientCorrectedUpdatedJEC').addTagInfos = cms.bool(True)
+
+
+process.p = cms.Path(
+#process.btagging*
+#process.patJetCorrFactorsUpdatedJEC*
+#process.updatedPatJetsUpdatedJEC*
+
+#process.pfImpactParameterTagInfos*
+#process.pfSecondaryVertexTagInfos*
+
+#process.pfInclusiveSecondaryVertexFinderTagInfos*
+#process.pfJetProbabilityBJetTags*
+#process.pfCombinedInclusiveSecondaryVertexV2BJetTags*
+
+#process.pfJetProbabilityBJetTags*
+
+#process.softPFMuonsTagInfos*
+#process.softPFElectronsTagInfos*
+#process.pfCombinedMVAV2BJetTags*
+
+#process.pfInclusiveSecondaryVertexFinderCvsLTagInfos*
+#process.pfCombinedCvsLJetTags*
+#process.pfCombinedCvsBJetTags*
+
+#process.pfDeepCSVTagInfos*
+                                          # #This is no longer needed! config.process.pfDeepCMVATagInfos*
+
+#process.pfDeepCSVJetTags*
+
+
+#process.pileupJetIdUpdated *
+#process.patJetCorrFactorsUpdatedJEC *
+#process.updatedPatJetsUpdatedJEC *
+#process.patJetCorrFactorsTransientCorrectedUpdatedJEC*
+#process.updatedPatJetsTransientCorrectedUpdatedJEC*
+#process.pfSecondaryVertexTagInfos*
+#process.pfInclusiveSecondaryVertexFinderTagInfos*
+#process.dump *
+#process.impactParameterTagInfos *
+#process.secondaryVertexTagInfos *
+process.demo)

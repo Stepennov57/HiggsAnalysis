@@ -1,0 +1,43 @@
+sed -e 's/Signal/DYLO/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DYLO.C
+sed -e 's/Signal/TTbar/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > TTbar.C
+sed -e 's/Signal/DY/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DY.C
+sed -e 's/Signal/DY50/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DY50.C
+sed -e 's/Signal/DATA/g'  -e 's/isMC = true/isMC = false/g'   Signal.C > DATA.C
+sed -e 's/Signal/DY0/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DY0.C
+sed -e 's/Signal/DY1/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DY1.C
+sed -e 's/Signal/DY2/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DY2.C
+sed -e 's/Signal/DY3/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DY3.C
+sed -e 's/Signal/DY4/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > DY4.C
+sed -e 's/Signal/STt/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > STt.C
+sed -e 's/Signal/STta/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > STta.C
+sed -e 's/Signal/STtW/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > STtW.C
+sed -e 's/Signal/STtWa/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > STtWa.C
+sed -e 's/Signal/STs/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > STs.C
+sed -e 's/Signal/WW/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > WW.C
+sed -e 's/Signal/WZ/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > WZ.C
+sed -e 's/Signal/ZZ/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > ZZ.C
+sed -e 's/Signal/Signal20/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > Signal20.C
+sed -e 's/Signal/Signal25/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > Signal25.C
+sed -e 's/Signal/Signal30/g'  -e 's/isMC = true/isMC = true/g'   Signal.C > Signal30.C
+
+sed -e 's/crab_Signal15/crab_DYLO/g'  -e 's/Signal/DYLO/g' Signal.h > DYLO.h
+sed -e 's/crab_Signal15/crab_TTbar/g'  -e 's/Signal/TTbar/g'  Signal.h > TTbar.h
+sed  -e 's/crab_Signal15/crab_DY/g'   -e 's/Signal/DY/g' Signal.h > DY.h
+sed  -e 's/crab_Signal15/crab_DY50/g'   -e 's/Signal/DY50/g' Signal.h > DY50.h
+#sed  -e 's/crab_Signal15/crab_DATA/g'   -e 's/Signal/DATA/g' Signal.h > DATA.h
+sed  -e 's/crab_Signal15/crab_DY0/g'   -e 's/Signal/DY0/g'  -e 's/sdb1/sdd1/g' Signal.h > DY0.h
+sed  -e 's/crab_Signal15/crab_DY1/g'   -e 's/Signal/DY1/g' Signal.h > DY1.h
+sed  -e 's/crab_Signal15/crab_DY2/g'   -e 's/Signal/DY2/g' Signal.h > DY2.h
+sed  -e 's/crab_Signal15/crab_DY3/g'   -e 's/Signal/DY3/g' Signal.h > DY3.h
+sed  -e 's/crab_Signal15/crab_DY4/g'   -e 's/Signal/DY4/g' Signal.h > DY4.h
+sed  -e 's/crab_Signal15/crab_STt/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/STt/g' Signal.h > STt.h
+sed  -e 's/crab_Signal15/crab_STta/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/STta/g' Signal.h > STta.h
+sed  -e 's/crab_Signal15/crab_STtW/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/STtW/g' Signal.h > STtW.h
+sed  -e 's/crab_Signal15/crab_STtWa/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/STtWa/g' Signal.h > STtWa.h
+sed  -e 's/crab_Signal15/crab_STs/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/STs/g' Signal.h > STs.h
+sed  -e 's/crab_Signal15/crab_WW/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/WW/g' Signal.h > WW.h
+sed  -e 's/crab_Signal15/crab_WZ/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/WZ/g' Signal.h > WZ.h
+sed  -e 's/crab_Signal15/crab_ZZ/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/ZZ/g' Signal.h > ZZ.h
+sed  -e 's/crab_Signal15/crab_Signal20/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/Signal20/g' Signal.h > Signal20.h
+sed  -e 's/crab_Signal15/crab_Signal25/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/Signal25/g' Signal.h > Signal25.h
+sed  -e 's/crab_Signal15/crab_Signal30/g' -e 's/sdd1/sdb1/g'  -e 's/Signal/Signal30/g' Signal.h > Signal30.h

@@ -1,0 +1,1430 @@
+// -*- C++ -*-
+//
+
+
+
+
+
+// Package:    test/Select
+// Class:      Select
+// 
+/**\class Select Select.cc test/Select/plugins/Select.cc
+
+ Description: [one line class summary]
+
+ Implementation:
+     [Notes on implementation]
+*/
+//
+// Original Author:  Anton Stepennov
+//         Created:  Fri, 22 Feb 2019 16:19:11 GMT
+//
+//
+
+#include <TFile.h>
+#include "TProfile.h"
+#include "TTree.h"
+#include <iostream>
+#include <algorithm>
+#include <sstream>
+#include <cmath>
+
+
+#include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/MuonReco/interface/MuonSelectors.h"
+#include "RecoMuon/TrackingTools/interface/MuonServiceProxy.h"
+#include "DataFormats/GeometryVector/interface/GlobalPoint.h"
+#include "Geometry/Records/interface/MuonGeometryRecord.h"
+#include "Geometry/DTGeometry/interface/DTGeometry.h"
+#include "Geometry/DTGeometry/interface/DTLayer.h"
+#include "Geometry/DTGeometry/interface/DTSuperLayer.h"
+#include "DataFormats/DTRecHit/interface/DTSLRecSegment2D.h"
+#include "RecoLocalMuon/DTSegment/src/DTSegmentUpdator.h"
+#include "RecoLocalMuon/DTSegment/src/DTSegmentCleaner.h"
+#include "RecoLocalMuon/DTSegment/src/DTHitPairForFit.h"
+
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+
+
+#include "DataFormats/BTauReco/interface/SecondaryVertexTagInfo.h"
+#include "RecoBTag/SecondaryVertex/interface/TrackKinematics.h"
+
+#include "DataFormats/BTauReco/interface/SecondaryVertexTagInfo.h"
+#include "DataFormats/BTauReco/interface/CandSecondaryVertexTagInfo.h"
+
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
+#include "DataFormats/PatCandidates/interface/Tau.h"
+#include "DataFormats/PatCandidates/interface/Photon.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
+#include "DataFormats/PatCandidates/interface/MET.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "SimDataFormats/JetMatching/interface/JetFlavourInfo.h"
+#include "SimDataFormats/JetMatching/interface/JetFlavourInfoMatching.h"
+#include "DataFormats/JetReco/interface/Jet.h"
+
+using namespace std;
+ using namespace edm;
+
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+#include "TLorentzVector.h"
+
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "DataFormats/Provenance/interface/Provenance.h"
+#include "FWCore/Common/interface/TriggerNames.h"
+#include "DataFormats/HLTReco/interface/TriggerEvent.h"
+#include "DataFormats/HLTReco/interface/TriggerObject.h"
+
+#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
+
+#include "CondFormats/JetMETObjects/interface/JetCorrectorParameters.h"
+#include "CondFormats/JetMETObjects/interface/JetCorrectionUncertainty.h"
+#include "JetMETCorrections/Objects/interface/JetCorrectionsRecord.h"
+#include "JetMETCorrections/JetCorrector/interface/JetCorrector.h"
+
+// system include files
+#include <memory>
+
+// user include files
+#include "FWCore/Framework/interface/Frameworkfwd.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/MakerMacros.h"
+
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "SimDataFormats/GeneratorProducts/interface/LHEEventProduct.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+
+//
+// class declaration
+//
+
+// If the analyzer does not use TFileService, please remove
+// the template argument to the base class so the class inherits
+// from  edm::one::EDAnalyzer<> and also remove the line from
+// constructor "usesResource("TFileService");"
+// This will improve performance in multithreaded jobs.
+
+class Select : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
+   public:
+      explicit Select(const edm::ParameterSet&);
+      ~Select();
+
+      static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
+
+   private:
+edm::EDGetTokenT<pat::MuonCollection> tok_muon_;
+edm::EDGetTokenT<reco::VertexCollection> tok_vrtx_;
+   edm::EDGetTokenT<TriggerResults> tok_trig_;
+edm::EDGetTokenT<pat::ElectronCollection> tok_ele_;
+
+edm::EDGetTokenT<reco::GenJetCollection> genjet_tag_;
+edm::EDGetTokenT<reco::GenParticleCollection> genpTok;
+
+edm::EDGetTokenT<reco::GenJetCollection> genpTok2;
+edm::EDGetTokenT<std::vector<pat::TriggerObjectStandAlone> > triggerObjects_;
+
+edm::EDGetTokenT<LHEEventProduct> generatorlheToken_;
+edm::EDGetTokenT<GenEventInfoProduct> genI_tok_;
+edm::EDGetTokenT<std::vector<PileupSummaryInfo > >  _puSummaryInfo;
+
+edm::EDGetTokenT<edm::View<reco::VertexCompositePtrCandidate>> tok_sv_;
+edm::EDGetTokenT<edm::View<reco::Vertex>> tok_pv_;
+
+
+//edm::EDGetTokenT<reco::JetFlavourInfoMatchingCollection> jetFlavourInfosToken_;
+
+edm::EDGetTokenT<reco::JetFlavourInfoMatchingCollection> GenJetFlavourInfosToken_;
+
+
+edm::EDGetTokenT<pat::JetCollection>  tok_jet_;
+//edm::EDGetTokenT<pat::JetCollection>
+edm::EDGetTokenT<edm::View<pat::Jet > > tok_jet_updated_;
+
+edm::EDGetTokenT<double>            tok_Rho_;
+
+edm::EDGetTokenT<pat::METCollection> tok_met_;
+
+edm::EDGetTokenT< double > prefweight_token;
+edm::EDGetTokenT< double > prefweightup_token;
+edm::EDGetTokenT< double > prefweightdown_token;
+
+TLorentzVector   VMuP ;
+TLorentzVector  VMuM  ;
+TLorentzVector  VJJ  ;
+
+TLorentzVector   VMuP2 ;
+TLorentzVector  VMuM2  ;
+TLorentzVector  VMuMu ;
+
+TLorentzVector  VMuMuLHE ;
+TLorentzVector   VMuPLHE ;
+TLorentzVector  VMuMLHE  ;
+
+TLorentzVector  VMuMuGEN ;
+TLorentzVector   VMuPGEN ;
+TLorentzVector  VMuMGEN  ;
+
+TLorentzVector  VMuMuGEN2 ;
+TLorentzVector   VMuPGEN2 ;
+TLorentzVector  VMuMGEN2  ;
+
+bool trig;
+double weight2;
+   Int_t           event;
+
+UInt_t           event32u;
+Long64_t           event64;
+ULong64_t           event64u;
+
+Float_t weightPS;
+Float_t weightPSUp;
+Float_t weightPSDown;
+
+Float_t weight;
+Float_t         genppt;
+Float_t         genpptP;
+Float_t         genpptM;
+Int_t           run;
+Int_t truecounter;
+Int_t mode1;
+Int_t mode2;
+
+//   Float_t         weight;
+   Float_t         VtxZ;
+   Float_t         VtxRho;
+   Int_t           NvtxEv;
+Float_t             lumi;
+Int_t lumisection;
+
+Double_t Rho;
+
+
+Int_t           NumRecoJetsPFCorrected;
+   Float_t         JetRecoPtPFCorrected[100];
+   Float_t         JetRecoEtPFCorrected[100];
+   Float_t         JetRecoEtaPFCorrected[100];
+   Float_t         JetRecoRapidityPFCorrected[100];
+   Float_t         JetRecoPhiPFCorrected[100];
+   Float_t         JetRecoPUMVAPFCorrected[100];
+   Float_t         JetRecoPUIDPFCorrected[100];
+Float_t         JetRecoPUIDNEWPFCorrected[100];
+
+Float_t         JetRecoNHFPFCorrected[100];
+Float_t         JetRecoNEMFPFCorrected[100];
+Float_t         JetRecoCHFPFCorrected[100] ;
+Float_t         JetRecoMUFPFCorrected[100] ;
+Float_t         JetRecoCEMFPFCorrected[100];
+Int_t           JetRecoNumConstPFCorrected[100] ;
+Int_t           JetRecoNumNeutralParticlesPFCorrected[100] ;
+Float_t         JetRecoCHMPFCorrected[100] ;
+
+std::vector<float> oldpfpt;
+std::vector<float> oldpfeta;
+std::vector<float> oldpfphi;
+std::vector<int> oldpfid;
+Int_t oldpfnum;
+
+
+Float_t         JetRecoPUIDCBPFCorrected[100];
+Float_t         JetRecoUNCPFCorrected[100];
+
+Float_t         DiscMVA[100];
+Float_t         DiscCSV[100];
+Float_t         DiscCvB[100];
+Float_t         DiscCvL[100];
+
+Float_t         DiscDeepCSVb[100];
+Float_t         DiscDeepCSVbb[100];
+Float_t         DiscDeepCSVc[100];
+Float_t         DiscDeepCSVudsg[100];
+
+
+
+Float_t JetRecoSVMassAVRPFCorrected[100];
+Float_t JetRecoSVMassIVFPFCorrected[100];
+Float_t JetRecoSVMassCorrectedPFCorrected[100];
+
+Int_t         JetRecoPFlavPFCorrected[100];
+Int_t         JetRecoHFlavPFCorrected[100];
+
+
+int muplus;
+int muminus;
+
+Int_t           NumRecoElectrons;
+Float_t ElectronPt[50];
+Float_t ElectronEta[50];
+Float_t ElectronPhi[50];
+Float_t ElectronEnergy[50];
+Int_t   ElectronCharge[50];
+
+Float_t  trackMomentumAtVtx[50];
+Float_t  ecalEnergy[50];
+
+
+Float_t full5x5_sigmaIetaIeta[50];
+Float_t ooEmooP[50];
+Float_t dEtaIn[50];
+Float_t dPhiIn[50];
+Float_t hOverE[50];
+Float_t sigmaIetaIeta[50];
+Float_t dxy[50];
+Float_t dz[50];
+Float_t relIsoWithEA[50];
+Float_t eMissingInnerHits[50];
+bool passCVeto[50];
+ Float_t mva[50];
+
+Int_t NumTrigObj;
+Float_t TrigEta[20];
+Float_t TrigPhi[20];
+
+Float_t         RecoPtMuons[50];
+   Float_t         RecoEtaMuons[50];
+   Float_t         RecoPhiMuons[50];
+   Int_t         RecoChargeMuons[50];
+Int_t           NumRecoMuons;
+Int_t           NumLayers[50];
+   Float_t         RecoIsoMuonsDxyvtx[50];
+   Float_t         RecoIsoMuonsDzvtx[50];
+
+ Float_t         RecoIsoMuonsDxyvtx2[50];
+   Float_t         RecoIsoMuonsDzvtx2[50];
+
+Float_t         RecoIsoMuonsIsol[50];
+   Float_t         RecoIsoMuonsSumPt[50];
+
+Float_t         RecoIsoMuonsSumChargedHpt[50];
+Float_t         RecoIsoMuonsSumNeutralHpt[50];
+Float_t         RecoIsoMuonsPhoton[50];
+Float_t         RecoIsoMuonsSumPUPt[50];
+
+   Float_t         RecoIsoMuonsSumPtPV[50];
+
+float ValidFraction[50];
+bool isLoose[50];
+bool isMedium[50];
+bool isGlobal[50];
+float NChi[50];
+int numberOfValidMuonHits[50];
+int numberOfMatchedStations[50];
+int numberOfValidPixelHits[50];
+int trackerLayersWithMeasurement[50];
+float ChiLocPos[50];
+float trkKink[50];
+float segmentCompatibility[50];
+
+
+Int_t           NumGenJets;
+   Float_t         PtGenJets[100];
+   Float_t         EtGenJets[100];
+   Float_t         EtaGenJets[100];
+   Float_t         PhiGenJets[100];
+Float_t         PFlavGenJets[100];
+Float_t         HFlavGenJets[100];
+
+Int_t           NumGenP;
+ Float_t        GenM[20];
+Float_t        GenPx[20];
+Float_t        GenPy[20];
+Float_t        GenPz[20];
+Float_t        GenE[20];
+Int_t        GenId[20];
+Int_t        GenStatus[20];
+
+std::vector<double> evtweight;
+std::vector<string> evtwid;
+
+
+
+Int_t NumGenMu;
+Float_t GenMuPt[50];
+Float_t GenMuEta[50];
+Float_t GenMuPhi[50];
+Float_t GenMuE[50];
+Int_t GenMuStatus[50];
+Int_t GenMuId[50];
+
+Int_t NumGenMu2;
+Float_t GenMuPt2[50];
+Float_t GenMuEta2[50];
+Float_t GenMuPhi2[50];
+Float_t GenMuE2[50];
+Int_t GenMuStatus2[50];
+Int_t GenMuId2[50];
+
+double pfMET;
+	double pfMETphi;
+double pfMET_corr;
+        double pfMETphi_corr;
+
+int numberOfSVertices;
+float sVertexX[50];
+float sVertexY[50]; 
+float sVertexZ[50]; 
+float sVertexEta[50]; 
+float sVertexPhi[50]; 
+float sVertexMass[50]; 
+float sVertexMassCorrected[50];
+
+TTree *wwtree;
+        TTree *wwtree2;
+      TFile *f;
+std::string fileName;
+   virtual void beginJob() override;
+      virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
+      virtual void endJob() override;
+
+      // ----------member data ---------------------------
+};
+
+//
+// constants, enums and typedefs
+//
+
+//
+// static data member definitions
+//
+
+//
+// constructors and destructor
+//
+Select::Select(const edm::ParameterSet& iConfig)
+
+{
+fileName = iConfig.getUntrackedParameter<std::string>("fileName","default-filename.root");
+   //now do what ever initialization is needed
+usesResource("TFileService");
+tok_muon_ = consumes<pat::MuonCollection>(edm::InputTag("slimmedMuons"));
+tok_vrtx_ = consumes<reco::VertexCollection>(edm::InputTag("offlineSlimmedPrimaryVertices"));
+tok_trig_  = consumes<TriggerResults>(edm::InputTag("TriggerResults","","HLT"));
+tok_ele_ = consumes<pat::ElectronCollection>(edm::InputTag("slimmedElectrons"));
+
+prefweight_token = consumes< double >(edm::InputTag("prefiringweight:nonPrefiringProb"));
+prefweightup_token = consumes< double >(edm::InputTag("prefiringweight:nonPrefiringProbUp"));
+prefweightdown_token = consumes< double >(edm::InputTag("prefiringweight:nonPrefiringProbDown"));
+
+genjet_tag_                    = consumes<reco::GenJetCollection>(edm::InputTag("slimmedGenJets"));
+genpTok = consumes<reco::GenParticleCollection>(edm::InputTag("prunedGenParticles"));
+genpTok2 = consumes<reco::GenJetCollection>(edm::InputTag("particleLevel", "leptons"));
+
+
+triggerObjects_  = consumes<std::vector<pat::TriggerObjectStandAlone>>(edm::InputTag("slimmedPatTrigger","","PAT"));
+
+generatorlheToken_ = consumes<LHEEventProduct>(edm::InputTag("externalLHEProducer","")) ;
+genI_tok_ = consumes<GenEventInfoProduct>(edm::InputTag("generator"));
+_puSummaryInfo                  = consumes<std::vector<PileupSummaryInfo>>(edm::InputTag("slimmedAddPileupInfo"));
+
+
+//jetFlavourInfosToken_ = consumes<reco::JetFlavourInfoMatchingCollection>( iConfig.getParameter<edm::InputTag>("jetFlavourInfos") );
+GenJetFlavourInfosToken_ = consumes<reco::JetFlavourInfoMatchingCollection>( iConfig.getParameter<edm::InputTag>("flavourMap") );
+
+
+tok_Rho_ = consumes<double>(edm::InputTag("fixedGridRhoFastjetAll"));
+
+tok_sv_ = consumes<edm::View<reco::VertexCompositePtrCandidate>>(edm::InputTag("slimmedSecondaryVertices"));
+tok_pv_ = consumes<edm::View<reco::Vertex>>(edm::InputTag("offlineSlimmedPrimaryVertices"));
+
+tok_jet_            = consumes<pat::JetCollection>(edm::InputTag("slimmedJets"));
+//tok_jet_updated_                = consumes<edm::View<pat::Jet > >(iConfig.getParameter<edm::InputTag>("updatedPatJetsUpdatedJEC"));
+
+tok_met_ = consumes<pat::METCollection>(edm::InputTag("slimmedMETs"));
+
+   //now do what ever initialization is needed
+   usesResource("TFileService");
+
+}
+
+
+Select::~Select()
+{
+ 
+   // do anything here that needs to be done at desctruction time
+   // (e.g. close files, deallocate resources etc.)
+
+}
+
+double testF()
+{
+return 1.0;
+}
+
+
+
+double SVM(const pat::Jet* jet)
+{
+double mass = -1;
+ double en = 0.;
+      double px = 0.;
+      double py = 0.;
+      double pz = 0.;
+const reco::CandSecondaryVertexTagInfo *candSVTagInfo = jet->tagInfoCandSecondaryVertex("pfInclusiveSecondaryVertexFinder");
+if( candSVTagInfo!=nullptr) {
+        if ( candSVTagInfo->nVertices() >= 1 ) {
+
+//TrackKinematics kin(candSVTagInfo->secondaryVertex(0));
+//JetRecoSVMassPFCorrected[NumRecoJetsPFCorrected]  =  kin.vectorSum().M();	
+//cout<<"mass:   "<<kin.vectorSum().M()<<endl;
+//cout<<"sv eta:  "<<candSVTagInfo->secondaryVertex(0).eta();
+//return candSVTagInfo->secondaryVertex(0).eta();
+double ntracks = candSVTagInfo->nVertexTracks(0);
+for (unsigned int ktrack =0 ;ktrack < ntracks; ++ktrack){
+	double m_hadron = 0.13957;
+	m_hadron = 0.13957;
+	  double ptsigned = candSVTagInfo->vertexTracks(0)[ktrack]->charge() * candSVTagInfo->vertexTracks(0)[ktrack]->pt();
+	  double eta_track = candSVTagInfo->vertexTracks(0)[ktrack]->eta();
+	  double phi_track = candSVTagInfo->vertexTracks(0)[ktrack]->phi();
+	  double pt_track = fabs(ptsigned);
+	  double px_track = pt_track*cos(phi_track);
+	  double py_track = pt_track*sin(phi_track);
+	  double pz_track = pt_track*sinh(eta_track);
+	  en += sqrt(m_hadron*m_hadron+pt_track*pt_track+pz_track*pz_track);
+	  px += px_track;
+	  py += py_track;
+	  pz += pz_track;
+
+	}
+mass = sqrt(en*en - px*px - py*py - pz*pz);
+
+}
+}
+return mass;
+}
+
+//
+// member functions
+//
+
+// ------------ method called for each event  ------------
+void
+Select::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+{
+   using namespace edm;
+
+//cout<<"test:  "<<testF()<<endl;
+Rho = 0;
+truecounter = 0; 
+weight = 1;
+trig = false;
+run = iEvent.id().run();
+//run = 1;
+event = iEvent.id().event();
+event32u = iEvent.id().event();
+event64 = iEvent.id().event();
+event64u = iEvent.id().event();
+lumisection = iEvent.luminosityBlock();
+
+
+edm::Handle< double > theprefweight;
+iEvent.getByToken(prefweight_token, theprefweight ) ;
+double _prefiringweight =(*theprefweight);
+
+edm::Handle< double > theprefweightup;
+iEvent.getByToken(prefweightup_token, theprefweightup ) ;
+double _prefiringweightup =(*theprefweightup);
+
+edm::Handle< double > theprefweightdown;
+iEvent.getByToken(prefweightdown_token, theprefweightdown ) ;
+double _prefiringweightdown =(*theprefweightdown);
+
+//cout<<"weight:  "<<_prefiringweightup<<endl;
+weightPS = _prefiringweight;
+weightPSUp = _prefiringweightup;
+weightPSDown = _prefiringweightdown;
+
+edm::Handle<GenEventInfoProduct> genEvt;
+      iEvent.getByToken(genI_tok_,genEvt);
+      int procid = (int) genEvt->signalProcessID();
+    weight = genEvt->weight();
+
+evtweight = {};
+evtwid = {};
+//cout<<"main weight:  "<<weight<<endl;
+evtweight = genEvt->weights();
+for(int t = 0; t< 107; t++) //111
+{
+//cout<<evtweight[t]<<endl;
+evtweight.push_back(evtweight[t]);
+}
+
+//cout<<"genweight   "<<weight<<endl;
+ edm::Handle<std::vector< PileupSummaryInfo > > infoPU;
+      iEvent.getByToken(_puSummaryInfo,infoPU);
+
+      for(std::vector<PileupSummaryInfo>::const_iterator it = infoPU->begin(); it != infoPU->end(); it++)
+        {
+          if(it->getBunchCrossing() == 0) lumi = it->getTrueNumInteractions();
+        }
+
+
+
+Double_t mupluspt=0;
+Double_t muminuspt=0;
+muplus=0;
+muminus=0;
+int muplus25 = 0;
+int muminus25 = 0;
+trig = false;
+
+edm::Handle<double> rh;
+  iEvent.getByToken(tok_Rho_,rh);
+const double rho_val = *(rh.product());
+//cout<<"rho:   "<<rho_val<<endl;
+Rho = rho_val;
+
+
+edm::ESHandle<JetCorrectorParametersCollection> JetCorParColl;
+iSetup.get<JetCorrectionsRecord>().get("AK4PFchs",JetCorParColl);
+JetCorrectorParameters const & JetCorPar = (*JetCorParColl)["Uncertainty"];
+JetCorrectionUncertainty *jecUnc = new JetCorrectionUncertainty(JetCorPar);
+
+
+//==================================== triggers ===================================
+edm::Handle<edm::TriggerResults> triggerResults;
+//edm::InputTag trigResultsTag("TriggerResults","","HLT");
+//iEvent.getByLabel(trigResultsTag,triggerResults);
+
+ Handle<std::vector<pat::TriggerObjectStandAlone> > triggerObjects;
+   iEvent.getByToken(triggerObjects_, triggerObjects);
+
+iEvent.getByToken(tok_trig_, triggerResults);
+const edm::TriggerNames & triggerNames = iEvent.triggerNames(*triggerResults);
+
+ for(unsigned i=0; i<triggerNames.size(); i++) {
+if(triggerResults->accept(i)) {
+//std::cout<<", "<<triggerNames.triggerName(i)<<std::endl;
+if((int)(triggerNames.triggerName(i)).find("HLT_IsoMu24_v")>-1) trig = true;
+if((int)(triggerNames.triggerName(i)).find("HLT_IsoTkMu24")>-1) trig = true;
+//if((int)(triggerNames.triggerName(i)).find("HLT_Ele27_eta2p1_WPTight_Gsf")>-1) trigE = true;
+// if((int)(triggerNames.triggerName(i)).find("HLT_")>-1) std::cout<<"shoot!!  "<<triggerNames.triggerName(i)<<std::endl;;
+//if((int)(triggerNames.triggerName(i)).find("HLT_Mu")>-1) std::cout<<"here1 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! "<<triggerNames.triggerName(i)<<std::endl;
+//std::cout<<"contains:  "<<(int)(triggerNames.triggerName(i)).find("HLT")<<std::endl;
+
+//std::string::size_type pos = s.find("text");
+
+//if(contains(triggerNames.triggerName(i), s2) == true) std::cout<<"here1  "<<triggerNames.triggerName(i)<<std::endl;
+           // if((int)(triggerNames.triggerName(i)).find("HLT_IsoMu")>-1) std::cout<<"shoot!!"<<std::endl;
+               // if((int)(triggerNames.triggerName(i)).find("HLT_IsoMu24_eta2p1")>-1) {HLT_IsoMu24_eta2p1=1; }
+}
+}
+
+NumTrigObj = 0;
+
+std::vector<std::string> filterLabels_;
+for (pat::TriggerObjectStandAlone obj : *triggerObjects) { // note: not "const &" since we want to call unpackPathNames
+        obj.unpackPathNames(triggerNames);
+        obj.unpackFilterLabels(iEvent, *triggerResults);
+//	std::cout << "\t   Filters:    ";w
+//        std::cout << "\tTrigger object:  pt " << obj.pt() << ", eta " << obj.eta() << ", phi " << obj.hasFilterLabel("hltEle27WPTightGsfTrackIsoFilter") << std::endl;
+//	cout<<"trigger name: "
+
+if(obj.hasFilterLabel("hltL3fL1sMu22L1f0Tkf24QL3trkIsoFiltered0p09") || obj.hasFilterLabel("hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09"))
+{
+TrigEta[NumTrigObj] = obj.eta();
+TrigPhi[NumTrigObj] = obj.phi();
+NumTrigObj++;
+}
+
+}
+
+
+//===================================== genp collection ============================
+
+
+Handle<reco::GenParticleCollection> particles;
+   iEvent.getByToken(genpTok, particles);
+
+Handle<reco::GenJetCollection> particles2;
+   iEvent.getByToken(genpTok2, particles2);
+
+NumGenMu = 0;
+NumGenMu2 = 0;
+double genptp = 0;
+double genptm = 0;
+double genptp2 = 0;
+double genptm2 = 0;
+
+double ptm = 0;
+double ptp = 0;
+
+double MZGEN = 0;
+double MZGEN2 = 0;
+
+int NumGenP = 0;
+
+for ( reco::GenParticleCollection::const_iterator genParticle = particles->begin();
+        genParticle != particles->end(); ++genParticle ) {
+    int absPdgId = TMath::Abs(genParticle->pdgId());
+    int status = genParticle->status();
+if(!(absPdgId == 13 || absPdgId == 11 || absPdgId == 15)) continue;
+
+//cout<<"id, status, pt, eta:  "<<absPdgId<<" , "<<status<<" , "<<genParticle->pt()<<" , "<<genParticle->eta()<<endl;
+
+GenMuPt[NumGenMu] = genParticle->pt();
+GenMuEta[NumGenMu] = genParticle->eta();
+GenMuPhi[NumGenMu] = genParticle->phi();
+GenMuE[NumGenMu] = genParticle->energy();
+GenMuStatus[NumGenMu] = status;
+GenMuId[NumGenMu] = genParticle->pdgId();
+if( genParticle->pdgId() == 13 &&  genParticle->pt() > genptp && status == 1)
+{
+VMuPGEN.SetPtEtaPhiE(GenMuPt[NumGenMu], GenMuEta[NumGenMu], GenMuPhi[NumGenMu], GenMuE[NumGenMu]);
+genptp = VMuPGEN.Pt();
+}
+if(genParticle->pdgId() == -13 &&  genParticle->pt() > genptm  && status == 1)
+{
+VMuMGEN.SetPtEtaPhiE(GenMuPt[NumGenMu], GenMuEta[NumGenMu], GenMuPhi[NumGenMu], GenMuE[NumGenMu]);
+genptm = VMuMGEN.Pt();
+}
+
+
+NumGenMu++;
+}
+
+for ( reco::GenJetCollection::const_iterator genParticle = particles2->begin();
+        genParticle != particles2->end(); ++genParticle ) {
+    int absPdgId = TMath::Abs(genParticle->pdgId());
+    int status = genParticle->status();
+if(!(absPdgId == 13 || absPdgId == 11 || absPdgId == 15)) continue;
+//cout<<"new id, status, pt, eta: "<<genParticle->pdgId()<<" , "<<status<<" , "<<genParticle->pt()<<" , "<<genParticle->eta()<<endl;
+GenMuPt2[NumGenMu2] = genParticle->pt();
+GenMuEta2[NumGenMu2] = genParticle->eta();
+GenMuPhi2[NumGenMu2] = genParticle->phi();
+GenMuE2[NumGenMu2] = genParticle->energy();
+GenMuStatus2[NumGenMu2] = status;
+GenMuId2[NumGenMu2] = genParticle->pdgId();
+if( genParticle->pdgId() == 13 &&  genParticle->pt() > genptp2 )
+{
+VMuPGEN2.SetPtEtaPhiE(GenMuPt2[NumGenMu2], GenMuEta2[NumGenMu2], GenMuPhi2[NumGenMu2], GenMuE2[NumGenMu2]);
+genptp2 = VMuPGEN2.Pt();
+}
+if(genParticle->pdgId() == -13 &&  genParticle->pt() > genptm2  )
+{
+VMuMGEN2.SetPtEtaPhiE(GenMuPt2[NumGenMu2], GenMuEta2[NumGenMu2], GenMuPhi2[NumGenMu2], GenMuE2[NumGenMu2]);
+genptm2 = VMuMGEN2.Pt();
+}
+
+
+NumGenMu2++;
+
+
+}
+
+
+/*
+
+// =============================================== useless lhe particles ====================================================================
+
+const lhef::HEPEUP& lheEvent = lheEventProduct->hepeup();
+                        std::vector<lhef::HEPEUP::FiveVector> lheParticles = lheEvent.PUP;
+                        for ( size_t idxParticle = 0; idxParticle < lheParticles.size(); ++idxParticle ) {
+                        //	int id = std::abs(lheEvent.IDUP[idxParticle]);
+                        //	int status = lheEvent.ISTUP[idxParticle];
+                        //	double mass = lheEvent.PUP[idxParticle][4];
+
+GenId[NumGenP] = lheEvent.IDUP[idxParticle];
+GenStatus[NumGenP] = lheEvent.ISTUP[idxParticle];
+GenPx[NumGenP] = lheEvent.PUP[idxParticle][0];
+GenPy[NumGenP] = lheEvent.PUP[idxParticle][1];
+GenPz[NumGenP] = lheEvent.PUP[idxParticle][2];
+GenE[NumGenP] = lheEvent.PUP[idxParticle][3];
+GenM[NumGenP] = lheEvent.PUP[idxParticle][4];
+
+if(GenId[NumGenP] == 13 && sqrt((GenPx[NumGenP]*GenPx[NumGenP]) + (GenPy[NumGenP]*GenPy[NumGenP]) ) > ptp)
+{
+VMuPLHE.SetPxPyPzE(GenPx[NumGenP], GenPy[NumGenP], GenPz[NumGenP], GenE[NumGenP]);
+ptp = VMuPLHE.Pt();
+}
+if(GenId[NumGenP] == -13 && sqrt((GenPx[NumGenP]*GenPx[NumGenP]) + (GenPy[NumGenP]*GenPy[NumGenP]) ) > ptm)
+{
+VMuMLHE.SetPxPyPzE(GenPx[NumGenP], GenPy[NumGenP], GenPz[NumGenP], GenE[NumGenP]);
+ptm = VMuMLHE.Pt();
+}
+
+
+
+                                NumGenP++;
+
+                }
+
+
+
+
+
+if(genptp > 0 && genptm > 0)
+{
+VMuMuGEN = VMuMGEN + VMuPGEN;
+MZGEN = VMuMuGEN.M();
+}
+if(genptp2 > 0 && genptm2 > 0)
+{
+VMuMuGEN2 = VMuMGEN2 + VMuPGEN2;
+MZGEN2 = VMuMuGEN2.M();
+}
+
+*/
+
+
+//===================================================================================== genjets ========================================================
+
+edm::Handle<reco::JetFlavourInfoMatchingCollection> genJetFlavourInfos;
+  iEvent.getByToken(GenJetFlavourInfosToken_, genJetFlavourInfos );
+NumGenJets = 0;
+edm::Handle<reco::GenJetCollection> GenjetColl;
+iEvent.getByToken(genjet_tag_, GenjetColl);
+reco::JetRefBaseProd genjetref(GenjetColl);
+//for ( reco::GenJetCollection::const_iterator genJet = GenjetColl->begin(); genJet != GenjetColl->end(); ++genJet )
+ //{
+for (unsigned ijet = 0; ijet < GenjetColl->size(); ++ijet) {
+const reco::GenJet* genJet = dynamic_cast<const reco::GenJet*>(&(*GenjetColl)[ijet]);
+PtGenJets[NumGenJets] = genJet->pt();
+EtaGenJets[NumGenJets] = genJet->eta();
+PhiGenJets[NumGenJets] = genJet->phi();
+EtGenJets[NumGenJets] = genJet->energy();
+
+
+//cout<<"gen pt, eta,   flav, vtx mass:  "<<genJet->pt()<<" , "<<genJet->eta()<<" , "<<(*genJetFlavourInfos)[genjetref->refAt(ijet)].getHadronFlavour()<<endl;
+//cout<<"dsfsd  "<<genjetref->refAt(genJet)<<endl;
+PFlavGenJets[NumGenJets] = (*genJetFlavourInfos)[genjetref->refAt(ijet)].getPartonFlavour();
+HFlavGenJets[NumGenJets] = (*genJetFlavourInfos)[genjetref->refAt(ijet)].getHadronFlavour();
+NumGenJets++;
+}
+
+//================================================================================================================
+
+//=================================================================== missing Et ===================================================================================================$
+edm::Handle<pat::METCollection> pfMEThandle;
+iEvent.getByToken(tok_met_, pfMEThandle);
+pfMET	   = (pfMEThandle->front() ).et();
+  pfMETphi = (pfMEThandle->front() ).phi();
+//cout<<"missing et:   "<<pfMET<<endl;
+
+/*
+edm::Handle< edm::View<reco::PFMET> > pfMEThandle2;
+iEvent.getByToken(tok_met_corr_, pfMEThandle2);
+pfMET_corr	= (pfMEThandle2->front() ).et();
+  pfMETphi_corr = (pfMEThandle2->front() ).phi();
+//cout<<"missing et, corr:   "<<pfMET<<" , "<<pfMET_corr<<endl;
+*/
+
+//========================================= muons ===============================
+
+edm::Handle<reco::VertexCollection> pvHandle;
+    iEvent.getByToken(tok_vrtx_,pvHandle);
+    const reco::VertexCollection & vertices = *pvHandle.product();
+edm::Handle<pat::MuonCollection> muonColl;
+iEvent.getByToken(tok_muon_, muonColl);
+reco::Vertex vertx = *(vertices.begin());
+
+NvtxEv = 0;
+reco::Vertex::Point vert;
+for(reco::VertexCollection::const_iterator it = vertices.begin() ; it != vertices.end() ; ++it)  {
+      if(!(*it).isFake() && (*it).ndof() > 4  ) {
+        if(it->tracksSize() > 0 &&  ( fabs(it->z()) <= 24. ) &&  ( fabs(it->position().rho()) <= 2. ) ) {
+//        result = true;
+          NvtxEv++;
+          if(it == vertices.begin()) {
+        vert = (*it).position();
+        }
+        }
+      } // nonfake vertex
+    }
+
+
+NumRecoMuons=0;
+for (pat::MuonCollection::const_iterator muon=muonColl->begin(), muonCollEnd=muonColl->end(); muon!=muonCollEnd;
+++muon)
+{
+
+//if(!muon::isLooseMuon(*muon)) continue;
+//if(!muon::isTightMuon(*muon, vertx)) continue;
+//if(!muon::isMediumMuon(*muon)) continue;
+if(muon->pt() > 5.0)
+{
+        //reco::TrackRef trkTrack = muon->track();
+        RecoPtMuons[NumRecoMuons] = muon->pt();
+        RecoEtaMuons[NumRecoMuons] = muon->eta();
+        RecoPhiMuons[NumRecoMuons] = muon->phi();
+isLoose[NumRecoMuons] = muon::isLooseMuon(*muon);
+isMedium[NumRecoMuons] = muon::isMediumMuon(*muon);
+isGlobal[NumRecoMuons] = muon->isGlobalMuon();
+if(muon->isGlobalMuon())
+{
+NChi[NumRecoMuons] = muon->globalTrack()->normalizedChi2();
+numberOfValidMuonHits[NumRecoMuons] = muon->globalTrack()->hitPattern().numberOfValidMuonHits();
+}
+else
+{
+NChi[NumRecoMuons] = -99;
+numberOfValidMuonHits[NumRecoMuons] = -99;
+}
+
+numberOfMatchedStations[NumRecoMuons] = muon->numberOfMatchedStations();
+if(muon->isTrackerMuon() || muon->isGlobalMuon())
+{
+
+ValidFraction[NumRecoMuons] = muon->innerTrack()->validFraction();
+numberOfValidPixelHits[NumRecoMuons] = muon->innerTrack()->hitPattern().numberOfValidPixelHits();
+trackerLayersWithMeasurement[NumRecoMuons] = muon->innerTrack()->hitPattern().trackerLayersWithMeasurement();
+NumLayers[NumRecoMuons] = muon->innerTrack()->hitPattern().trackerLayersWithMeasurement();
+}
+else
+{
+ValidFraction[NumRecoMuons] = -1;
+NumLayers[NumRecoMuons] = -1;
+numberOfValidPixelHits[NumRecoMuons] = -9;
+trackerLayersWithMeasurement[NumRecoMuons] = -1;
+}
+
+
+ChiLocPos[NumRecoMuons] = muon->combinedQuality().chi2LocalPosition;
+trkKink[NumRecoMuons] = muon->combinedQuality().trkKink;
+segmentCompatibility[NumRecoMuons] = muon::segmentCompatibility(*muon);
+        RecoChargeMuons[NumRecoMuons] = muon->charge();
+
+//cout<<"pt, eta, phi:  "<<muon->pt()<<" , "<<muon->eta()<<" , "<<muon->phi()<<endl;
+//cout<<"dxy, dz:  "<<fabs(muon->muonBestTrack()->dxy(vertx.position()))<<" , "<<fabs(muon->muonBestTrack()->dz(vertx.position()))<<endl;
+ if( !(muon->muonBestTrack().isNull()))
+{
+        RecoIsoMuonsDxyvtx[NumRecoMuons] =  fabs(muon->muonBestTrack()->dxy(vertx.position()));
+ RecoIsoMuonsDzvtx[NumRecoMuons] =  fabs(muon->muonBestTrack()->dz(vertx.position()));
+
+}
+else
+{
+RecoIsoMuonsDxyvtx[NumRecoMuons] = -1;
+RecoIsoMuonsDzvtx[NumRecoMuons] = -1;
+}
+
+ if( !(muon->globalTrack().isNull() == true || muon->innerTrack().isNull() == true))
+{
+        RecoIsoMuonsDxyvtx2[NumRecoMuons] =  fabs(muon->muonBestTrack()->dxy(vertx.position()));
+ RecoIsoMuonsDzvtx2[NumRecoMuons] =  fabs(muon->muonBestTrack()->dz(vertx.position()));
+
+}
+
+else
+{
+RecoIsoMuonsDxyvtx2[NumRecoMuons] = -1;
+RecoIsoMuonsDzvtx2[NumRecoMuons] = -1;
+}
+
+        RecoIsoMuonsSumPt[NumRecoMuons] =  muon->isolationR03().sumPt;
+
+
+
+ RecoIsoMuonsSumChargedHpt[NumRecoMuons] = muon->pfIsolationR04().sumChargedHadronPt;
+RecoIsoMuonsSumNeutralHpt[NumRecoMuons] = muon->pfIsolationR04().sumNeutralHadronEt;
+RecoIsoMuonsPhoton[NumRecoMuons] = muon->pfIsolationR04().sumPhotonEt;
+RecoIsoMuonsSumPUPt[NumRecoMuons] = muon->pfIsolationR04().sumPUPt;
+
+  NumRecoMuons++;
+   if (muon->charge() > 0 && muon->pt() > 5) {
+
+muplus++;
+if(muon->pt() > 20) muplus25++;
+if(muon->pt() > mupluspt)
+{
+VMuP.SetPtEtaPhiE(muon->pt(), muon->eta(), muon->phi(), muon->energy());
+mupluspt = muon->pt();
+}
+}
+        if (muon->charge() < 0 && muon->pt() > 5) {
+muminus++;
+if(muon->pt() > 20) muminus25++;
+if(muon->pt() > muminuspt)
+{
+VMuM.SetPtEtaPhiE(muon->pt(), muon->eta(), muon->phi(), muon->energy());
+muminuspt = muon->pt();
+}
+}
+
+}
+}
+
+//============================================= jet ========================================================
+NumRecoJetsPFCorrected = 0;
+
+//edm::Handle<reco::JetFlavourInfoMatchingCollection> theJetFlavourInfos;
+  //iEvent.getByToken(jetFlavourInfosToken_, theJetFlavourInfos );
+
+
+edm::Handle<pat::JetCollection> pfjetH;
+iEvent.getByToken(tok_jet_, pfjetH);
+
+edm::Handle<edm::View<reco::VertexCompositePtrCandidate>> svs_;
+iEvent.getByToken(tok_sv_, svs_);
+
+edm::Handle<edm::View<reco::Vertex>> pvs_;
+iEvent.getByToken(tok_pv_, pvs_);
+const auto & pv = (*pvs_)[0];
+
+reco::JetRefBaseProd jetref(pfjetH);
+
+for (unsigned ijet = 0; ijet < pfjetH->size(); ++ijet) {
+
+const pat::Jet* jet = dynamic_cast<const pat::Jet*>(&(*pfjetH)[ijet]);
+
+float mva   = jet->userFloat("pileupJetId:fullDiscriminant");
+int    idflag = jet->userInt("pileupJetId:fullId");
+
+
+if(jet->pt() < 10 || fabs(jet->eta()) > 5) continue;
+
+
+double massIVF = -1;
+double m_vertex_ptcorr = -1;
+for(const auto &sv: *svs_){
+
+double en = 0.;
+      double px = 0.;
+      double py = 0.;
+      double pz = 0.;
+double m_hadron = 0.13957;
+reco::TrackKinematics kin(sv);
+
+for(size_t i=0; i < sv.numberOfSourceCandidatePtrs(); ++i)
+{
+
+  en += sqrt(m_hadron*m_hadron+(sv.daughterPtr(i)->pt()*sv.daughterPtr(i)->pt())+(sv.daughterPtr(i)->pz()*sv.daughterPtr(i)->pz()));
+          px += sv.daughterPtr(i)->px();
+          py += sv.daughterPtr(i)->py();
+          pz += sv.daughterPtr(i)->pz();
+
+}
+
+GlobalVector flightDir(sv.vertex().x() - pv.x(), sv.vertex().y() - pv.y(),sv.vertex().z() - pv.z());
+                    GlobalVector jetDir(jet->px(),jet->py(),jet->pz());
+                    if( Geom::deltaR2( flightDir, jetDir ) < 0.09 ){
+massIVF = sv.p4().M();
+double m_vertex = sqrt(en*en - px*px - py*py - pz*pz);
+double m_vertex2 = (en*en - px*px - py*py - pz*pz);
+
+double alpha = (px*flightDir.x() + py*flightDir.y())/(sqrt(px*px+py*py)*sqrt(flightDir.x()*flightDir.x()+flightDir.y()*flightDir.y()));
+alpha = acos(alpha);
+double ptcorr = sqrt(px*px+py*py)*sin(alpha);
+m_vertex_ptcorr = sqrt(m_vertex2+ptcorr*ptcorr)+ptcorr;
+
+}
+}
+
+//cout<<"mass vs corrected:  "<<massIVF<<" , "<<m_vertex_ptcorr<<endl;
+//JetRecoSVMassAVRPFCorrected[NumRecoJetsPFCorrected] = jet->userFloat("vtxMass");
+JetRecoSVMassIVFPFCorrected[NumRecoJetsPFCorrected] = massIVF;
+JetRecoSVMassCorrectedPFCorrected[NumRecoJetsPFCorrected] = m_vertex_ptcorr;
+
+JetRecoPUMVAPFCorrected[NumRecoJetsPFCorrected] = mva;
+JetRecoPUIDPFCorrected[NumRecoJetsPFCorrected] = idflag ;
+
+float NHF = jet->neutralHadronEnergyFraction();
+float NEMF = jet->neutralEmEnergyFraction();
+float CHF = jet->chargedHadronEnergyFraction();
+float MUF = jet->muonEnergyFraction();
+float CEMF = jet->chargedEmEnergyFraction();
+int NumConst = jet->chargedMultiplicity()+jet->neutralMultiplicity();
+int NumNeutralParticles =jet->neutralMultiplicity();
+int CHM = jet->chargedMultiplicity();
+
+JetRecoPtPFCorrected[NumRecoJetsPFCorrected] = jet->pt();
+        JetRecoEtPFCorrected[NumRecoJetsPFCorrected] = jet->et();
+        JetRecoEtaPFCorrected[NumRecoJetsPFCorrected] = jet->eta();
+        JetRecoPhiPFCorrected[NumRecoJetsPFCorrected] = jet->phi();
+        JetRecoRapidityPFCorrected[NumRecoJetsPFCorrected] = jet->rapidity();
+
+//========= jetid things ===========
+JetRecoNHFPFCorrected[NumRecoJetsPFCorrected] = NHF;
+JetRecoNEMFPFCorrected[NumRecoJetsPFCorrected] = NEMF;
+JetRecoCHFPFCorrected[NumRecoJetsPFCorrected] = CHF;
+JetRecoMUFPFCorrected[NumRecoJetsPFCorrected] = MUF;
+JetRecoCEMFPFCorrected[NumRecoJetsPFCorrected] = CEMF;
+JetRecoNumConstPFCorrected[NumRecoJetsPFCorrected] = NumConst;
+JetRecoNumNeutralParticlesPFCorrected[NumRecoJetsPFCorrected] = NumNeutralParticles;
+JetRecoCHMPFCorrected[NumRecoJetsPFCorrected] = CHM;
+
+jecUnc->setJetEta(jet->eta());
+    jecUnc->setJetPt(jet->pt());
+     double unc_up = jecUnc->getUncertainty(true);
+        JetRecoUNCPFCorrected[NumRecoJetsPFCorrected] = unc_up;
+
+//cout<<"unc:   "<<unc_up<<endl;
+
+DiscMVA[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfCombinedMVAV2BJetTags");
+DiscCSV[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfCombinedInclusiveSecondaryVertexV2BJetTags");
+DiscCvB[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfCombinedCvsBJetTags");
+DiscCvL[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfCombinedCvsLJetTags");
+DiscDeepCSVb[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfDeepCSVJetTags:probb");
+DiscDeepCSVbb[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfDeepCSVJetTags:probbb");
+DiscDeepCSVc[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfDeepCSVJetTags:probc");
+DiscDeepCSVudsg[NumRecoJetsPFCorrected] = jet->bDiscriminator("pfDeepCSVJetTags:probudsg");
+
+
+ JetRecoPFlavPFCorrected[NumRecoJetsPFCorrected] = jet->partonFlavour() ;
+        JetRecoHFlavPFCorrected[NumRecoJetsPFCorrected] = jet->hadronFlavour() ;
+
+//cout<<"jet pt:  "<<jet->pt()<<" , "<<jet->eta()<<" , "<<jet->phi()<<endl;
+//cout<<"jet pt, eta, flav:  "<<jet->pt()<<" , "<<jet->eta()<<" , "<<(*theJetFlavourInfos)[jetref->refAt(ijet)].getHadronFlavour()<<endl;
+//cout<<"jet pt, eta, flav:  "<<jet->hadronFlavour()<<endl;
+NumRecoJetsPFCorrected++;
+
+}
+//==========================================================================================================
+//===================================== vertices ===========================================================
+numberOfSVertices = 0;
+
+for(const auto &sv: *svs_){
+
+//cout<<"number of tracks:   "<<sv.numberOfSourceCandidatePtrs()<<endl;
+
+double en = 0.;
+      double px = 0.;
+      double py = 0.;
+      double pz = 0.;
+double m_hadron = 0.13957;
+
+//double PVSVx = sv.flightDistance()*cos(sv.phi());
+//double PVSVy =  sv.flightDistance()*sin(sv.phi());
+
+for(size_t i=0; i < sv.numberOfSourceCandidatePtrs(); ++i)
+{
+
+  en += sqrt(m_hadron*m_hadron+(sv.daughterPtr(i)->pt()*sv.daughterPtr(i)->pt())+(sv.daughterPtr(i)->pz()*sv.daughterPtr(i)->pz()));
+	  px += sv.daughterPtr(i)->px();
+	  py += sv.daughterPtr(i)->py();
+	  pz += sv.daughterPtr(i)->pz();
+
+}
+
+//cout<<"mass vs corrected mass:  "<<sv.p4().M()<<" , "<<sqrt(en*en - px*px - py*py - pz*pz)<<endl;
+
+reco::TrackKinematics kin(sv);
+
+GlobalVector flightDir(sv.vertex().x() - pv.x(), sv.vertex().y() - pv.y(),sv.vertex().z() - pv.z());
+
+double m_vertex = sqrt(en*en - px*px - py*py - pz*pz);
+double m_vertex2 = (en*en - px*px - py*py - pz*pz);
+
+double alpha = (px*flightDir.x() + py*flightDir.y())/(sqrt(px*px+py*py)*sqrt(flightDir.x()*flightDir.x()+flightDir.y()*flightDir.y()));
+alpha = acos(alpha);
+double ptcorr = sqrt(px*px+py*py)*sin(alpha);
+double m_vertex_ptcorr = sqrt(m_vertex2+ptcorr*ptcorr)+ptcorr;
+
+
+//cout<<"vectro lenght:  "<<sqrt(flightDir.x()*flightDir.x()+flightDir.y()*flightDir.y() + flightDir.z()*flightDir.z())<<endl;
+//cout<<"mass vs corrected:  "<<m_vertex<<" , "<<m_vertex_ptcorr<<endl;
+
+sVertexX[numberOfSVertices] = flightDir.x();
+sVertexY[numberOfSVertices] = flightDir.y();
+sVertexZ[numberOfSVertices] = flightDir.z();
+sVertexEta[numberOfSVertices] = flightDir.eta();
+sVertexPhi[numberOfSVertices] = flightDir.phi();
+sVertexMass[numberOfSVertices] = sv.p4().M();
+sVertexMassCorrected[numberOfSVertices] = m_vertex_ptcorr;
+
+numberOfSVertices++;
+}
+//========================================= electrons ===============================
+
+edm::Handle<pat::ElectronCollection> electronColl;
+iEvent.getByToken(tok_ele_, electronColl);
+NumRecoElectrons=0;
+
+for (pat::ElectronCollection::const_iterator el=electronColl->begin(), electronCollEnd=electronColl->end(); el!=electronCollEnd;
+++el)
+{
+const int nEtaBins = 7;
+    const float etaBinLimits[nEtaBins+1] = {0.0, 1.0, 1.479, 2.0, 2.2, 2.3, 2.4, 2.5};
+    const float effectiveAreaValues[nEtaBins] = {0.1440, 0.1562, 0.1032, 0.0859, 0.1116, 0.1321, 0.1654};
+
+
+if(el->pt() < 5.0) continue;
+//cout<<"!!!  "<<el->passConversionVeto()<<endl;
+//cout<<" energy 1, 2, 3:  "<<el->energy()<<" , "<<el->userFloat("ecalEnergyPreCorr")<<" , "<<el->userFloat("ecalEnergyPostCorr")<<endl;
+//cout<<"Trk energy1, 2, 3:  "<<el->energy()<<" , "<<el->userFloat("ecalTrkEnergyPreCorr")<<"  , "<<el->userFloat("ecalTrkEnergyPostCorr")<<endl;
+const reco::GsfElectron::PflowIsolationVariables& pfIso = el->pfIsolationVariables();
+float etaSC = el->superCluster()->eta();
+ int etaBin = 0;
+    while(etaBin < nEtaBins-1 && abs(etaSC) > etaBinLimits[etaBin+1])  ++etaBin;
+
+float area = effectiveAreaValues[etaBin];
+    relIsoWithEA[NumRecoElectrons] = ( pfIso.sumChargedHadronPt + max(0.0, pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - (Rho) * area ) )/el->pt();
+
+trackMomentumAtVtx[NumRecoElectrons]               = sqrt(el->trackMomentumAtVtx().mag2());
+ecalEnergy[NumRecoElectrons]                       = el->ecalEnergy();
+
+ElectronPt[NumRecoElectrons] = el->pt();
+ElectronEta[NumRecoElectrons] = el->eta();
+ElectronPhi[NumRecoElectrons] = el->phi();
+ElectronEnergy[NumRecoElectrons] = el->energy();
+ElectronCharge[NumRecoElectrons] = el->charge();
+
+full5x5_sigmaIetaIeta[NumRecoElectrons] = el->full5x5_sigmaIetaIeta();
+ooEmooP[NumRecoElectrons] = fabs(1/ecalEnergy[NumRecoElectrons] - 1/trackMomentumAtVtx[NumRecoElectrons]);
+dEtaIn[NumRecoElectrons] = el->deltaEtaSuperClusterTrackAtVtx();
+dPhiIn[NumRecoElectrons] = el->deltaPhiSuperClusterTrackAtVtx();
+hOverE[NumRecoElectrons] = el->hadronicOverEm();;
+sigmaIetaIeta[NumRecoElectrons] = el->sigmaIetaIeta();
+dxy[NumRecoElectrons] = el->gsfTrack()->dxy(pv.position());
+dz[NumRecoElectrons] = el->gsfTrack()->dz(pv.position());
+eMissingInnerHits[NumRecoElectrons] = el->gsfTrack()->hitPattern().numberOfAllHits(reco::HitPattern::MISSING_INNER_HITS);;
+passCVeto[NumRecoElectrons] = el->passConversionVeto();
+//mva[NumRecoElectrons] = el->userFloat("ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values");
+//ElectronMVAEstimatorRun2Spring15Trig25nsV1Values
+mva[NumRecoElectrons] = el->userFloat("ElectronMVAEstimatorRun2Spring15Trig25nsV1Values");
+NumRecoElectrons++;
+}
+
+
+//==========================================================================================================
+if((muplus > 0 && muminus > 0 && trig == true && (muplus25 + muminus25) > 0) || (MZGEN2 > 60.0 && MZGEN2 < 120.0) || (MZGEN > 60.0 && MZGEN < 120.0))
+{
+genppt = -1;
+genpptP = -1;
+genpptM = -1;
+cout<<"fill"<<endl;
+wwtree->Fill();
+cout<<"size:  "<<evtweight.size()<<endl;
+}
+truecounter++;
+wwtree2->Fill();
+//==============================================================================================================================================
+
+
+#ifdef THIS_IS_AN_EVENT_EXAMPLE
+   Handle<ExampleData> pIn;
+   iEvent.getByLabel("example",pIn);
+#endif
+   
+#ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
+   ESHandle<SetupData> pSetup;
+   iSetup.get<SetupRecord>().get(pSetup);
+#endif
+}
+
+
+// ------------ method called once each job just before starting event loop  ------------
+void 
+Select::beginJob()
+{
+using namespace std;
+f = new TFile(fileName.c_str(), "RECREATE");	  //// the name of the Root file should be set in Jet.cfg!
+wwtree  = new TTree("wztree", "tracks tree");
+wwtree2  = new TTree("wztree2", "tracks tree");
+wwtree->Branch("genppt", &genppt, "genppt/F");
+wwtree->Branch("genpptP", &genpptP, "genpptP/F");
+wwtree->Branch("genpptM", &genpptM, "genpptM/F");
+wwtree->Branch("run", &run, "run/I");
+wwtree->Branch("lumisection", &lumisection, "lumisection/I");
+wwtree->Branch("event", &event, "event/I");
+
+wwtree->Branch("trig", &trig, "trig/B");
+wwtree->Branch("muplus", &muplus, "muplus/I");
+wwtree->Branch("muminus", &muminus, "muminus/I");
+
+wwtree->Branch("NumGenJets", &NumGenJets, "NumGenJets/I");
+wwtree->Branch("PtGenJets", &PtGenJets, "PtGenJets[100]/F");
+wwtree->Branch("EtaGenJets", &EtaGenJets, "EtaGenJets[100]/F");
+wwtree->Branch("EtGenJets", &EtGenJets, "EtGenJets[100]/F");
+wwtree->Branch("PhiGenJets", &PhiGenJets, "PhiGenJets[100]/F");
+wwtree->Branch("PFlavGenJets", &PFlavGenJets, "PFlavGenJets[100]/F");
+wwtree->Branch("HFlavGenJets", &HFlavGenJets, "HFlavGenJets[100]/F");
+
+wwtree->Branch("NumGenMu", &NumGenMu, "NumGenMu/I");
+wwtree->Branch("GenMuPt", &GenMuPt, "GenMuPt[50]/F");
+wwtree->Branch("GenMuEta", &GenMuEta, "GenMuEta[50]/F");
+wwtree->Branch("GenMuPhi", &GenMuPhi, "GenMuPhi[50]/F");
+wwtree->Branch("GenMuE", &GenMuE, "GenMuE[50]/F");
+wwtree->Branch("GenMuStatus", &GenMuStatus, "GenMuStatus[50]/I");
+wwtree->Branch("GenMuId", &GenMuId, "GenMuId[50]/I");
+
+wwtree->Branch("NumGenMu2", &NumGenMu2, "NumGenMu2/I");
+wwtree->Branch("GenMuPt2", &GenMuPt2, "GenMuPt2[50]/F");
+wwtree->Branch("GenMuEta2", &GenMuEta2, "GenMuEta2[50]/F");
+wwtree->Branch("GenMuPhi2", &GenMuPhi2, "GenMuPhi2[50]/F");
+wwtree->Branch("GenMuE2", &GenMuE2, "GenMuE2[50]/F");
+wwtree->Branch("GenMuStatus2", &GenMuStatus2, "GenMuStatus2[50]/I");
+wwtree->Branch("GenMuId2", &GenMuId2, "GenMuId2[50]/I");
+
+wwtree->Branch("evtweight", &evtweight);
+wwtree->Branch("evtwid", &evtwid);
+
+
+
+wwtree->Branch("NumLayers", &NumLayers, "NumLayers[50]/I");
+wwtree->Branch("event32u", &event32u, "event32u/i"); // 32 unsigned
+wwtree->Branch("event64", &event64, "event64/L"); //64
+wwtree->Branch("event64u", &event64u, "event64u/l"); //65 unsigned
+
+wwtree->Branch("NvtxEv", &NvtxEv, "NvtxEv/I");
+wwtree->Branch("lumi", &lumi, "lumi/F");
+wwtree2->Branch("lumi", &lumi, "lumi/F");
+wwtree->Branch("Rho", &Rho, "Rho/D");
+
+wwtree2->Branch("evtwid", &evtwid);
+wwtree2->Branch("evtweight", &evtweight);
+wwtree2->Branch("truecounter", &truecounter, "truecounter/I");
+wwtree2->Branch("weight", &weight, "weight/F");
+wwtree->Branch("weight", &weight, "weight/F");
+
+wwtree->Branch("weightPS", &weightPS, "weightPS/F");
+wwtree->Branch("weightPSUp", &weightPSUp, "weightPSUp/F");
+wwtree->Branch("weightPSDown", &weightPSDown, "weightPSDown/F");
+
+wwtree->Branch("mode1", &mode1, "mode1/I");
+wwtree->Branch("mode2", &mode2, "mode2/I");
+
+/*
+wwtree->Branch("pfMET", &pfMET, "pfMET/D");
+wwtree->Branch("pfMETphi", &pfMETphi, "pfMETphi/D");
+
+
+wwtree->Branch("NumRecoElectrons", &NumRecoElectrons, "NumRecoElectrons/I");
+wwtree->Branch("mva", &mva, "mva[50]/F");
+wwtree->Branch("ElectronPt", &ElectronPt, "ElectronPt[50]/F");
+wwtree->Branch("ElectronEta", &ElectronEta, "ElectronEta[50]/F");
+wwtree->Branch("ElectronPhi", &ElectronPhi, "ElectronPhi[50]/F");
+wwtree->Branch("ElectronEnergy", &ElectronEnergy, "ElectronEnergy[50]/F");
+wwtree->Branch("ElectronCharge", &ElectronCharge, "ElectronCharge[50]/I");
+wwtree->Branch("trackMomentumAtVtx", &trackMomentumAtVtx, "trackMomentumAtVtx[50]/F");
+wwtree->Branch("ecalEnergy", &ecalEnergy, "ecalEnergy[50]/F");
+wwtree->Branch("full5x5_sigmaIetaIeta", &full5x5_sigmaIetaIeta, "full5x5_sigmaIetaIeta[50]/F");
+wwtree->Branch("ooEmooP", &ooEmooP, "ooEmooP[50]/F");
+wwtree->Branch("dEtaIn", &dEtaIn, "dEtaIn[50]/F");
+wwtree->Branch("dPhiIn", &dPhiIn, "dPhiIn[50]/F");
+wwtree->Branch("hOverE", &hOverE, "hOverE[50]/F");
+wwtree->Branch("sigmaIetaIeta", &sigmaIetaIeta, "sigmaIetaIeta[50]/F");
+wwtree->Branch("dxy", &dxy, "dxy[50]/F");
+wwtree->Branch("dz", &dz, "dz[50]/F");
+wwtree->Branch("relIsoWithEA", &relIsoWithEA, "relIsoWithEA[50]/F");
+wwtree->Branch("eMissingInnerHits", &eMissingInnerHits, "eMissingInnerHits[50]/F");
+wwtree->Branch("passCVeto", &passCVeto, "passCVeto[50]/F");
+
+
+wwtree->Branch("numberOfSVertices", &numberOfSVertices, "numberOfSVertices/I");
+wwtree->Branch("sVertexX", &sVertexX, "sVertexX[50]/F");
+wwtree->Branch("sVertexY", &sVertexY, "sVertexY[50]/F");
+wwtree->Branch("sVertexZ", &sVertexZ, "sVertexZ[50]/F");
+wwtree->Branch("sVertexEta", &sVertexEta, "sVertexEta[50]/F");
+wwtree->Branch("sVertexPhi", &sVertexPhi, "sVertexPhi[50]/F");
+wwtree->Branch("sVertexMass", &sVertexMass, "sVertexMass[50]/F");
+wwtree->Branch("sVertexMassCorrected", &sVertexMassCorrected, "sVertexMassCorrected[50]/F");
+
+
+wwtree->Branch("NumTrigObj", &NumTrigObj, "NumTrigObj/I");
+wwtree->Branch("TrigEta", &TrigEta, "TrigEta[20]/F");
+wwtree->Branch("TrigPhi", &TrigPhi, "TrigPhi[20]/F");
+
+wwtree->Branch("NumRecoMuons", &NumRecoMuons, "NumRecoMuons/I");
+wwtree->Branch("RecoPtMuons", &RecoPtMuons, "RecoPtMuons[50]/F");
+wwtree->Branch("RecoEtaMuons", &RecoEtaMuons, "RecoEtaMuons[50]/F");
+wwtree->Branch("RecoPhiMuons", &RecoPhiMuons, "RecoPhiMuons[50]/F");
+wwtree->Branch("RecoChargeMuons", &RecoChargeMuons, "RecoChargeMuons[50]/I");
+wwtree->Branch("RecoIsoMuonsSumPt", &RecoIsoMuonsSumPt, "RecoIsoMuonsSumPt[50]/F");
+wwtree->Branch("RecoIsoMuonsDxyvtx", &RecoIsoMuonsDxyvtx, "RecoIsoMuonsDxyvtx[50]/F");
+wwtree->Branch("RecoIsoMuonsDzvtx", &RecoIsoMuonsDzvtx, "RecoIsoMuonsDzvtx[50]/F");
+
+wwtree->Branch("RecoIsoMuonsDxyvtx2", &RecoIsoMuonsDxyvtx2, "RecoIsoMuonsDxyvtx2[50]/F");
+wwtree->Branch("RecoIsoMuonsDzvtx2", &RecoIsoMuonsDzvtx2, "RecoIsoMuonsDzvtx2[50]/F");
+
+wwtree->Branch("RecoIsoMuonsSumChargedHpt", &RecoIsoMuonsSumChargedHpt, "RecoIsoMuonsSumChargedHpt[50]/F");
+wwtree->Branch("RecoIsoMuonsSumNeutralHpt", &RecoIsoMuonsSumNeutralHpt, "RecoIsoMuonsSumNeutralHpt[50]/F");
+wwtree->Branch("RecoIsoMuonsPhoton", &RecoIsoMuonsPhoton, "RecoIsoMuonsPhoton[50]/F");
+wwtree->Branch("RecoIsoMuonsSumPUPt", &RecoIsoMuonsSumPUPt, "RecoIsoMuonsSumPUPt[50]/F");
+
+wwtree->Branch("ValidFraction", &ValidFraction, "ValidFraction[50]/F");
+wwtree->Branch("isLoose", &isLoose, "isLoose[50]/B");
+wwtree->Branch("isMedium", &isMedium, "isMedium[50]/B");
+wwtree->Branch("isGlobal", &isGlobal, "isGlobal[50]/B");
+wwtree->Branch("NChi", &NChi, "NChi[50]/F");
+
+wwtree->Branch("numberOfValidMuonHits", &numberOfValidMuonHits, "numberOfValidMuonHits[50]/I");
+wwtree->Branch("numberOfMatchedStations", &numberOfMatchedStations, "numberOfMatchedStations[50]/I");
+wwtree->Branch("numberOfValidPixelHits", &numberOfValidPixelHits, "numberOfValidPixelHits[50]/I");
+wwtree->Branch("trackerLayersWithMeasurement", &trackerLayersWithMeasurement, "trackerLayersWithMeasurement[50]/I");
+
+wwtree->Branch("ChiLocPos", &ChiLocPos, "ChiLocPos[50]/F");
+wwtree->Branch("trkKink", &trkKink, "trkKink[50]/F");
+wwtree->Branch("segmentCompatibility", &segmentCompatibility, "segmentCompatibility[50]/F");
+
+
+
+wwtree->Branch("DiscMVA", &DiscMVA, "DiscMVA[100]/F");
+wwtree->Branch("DiscCSV", &DiscCSV, "DiscCSV[100]/F");
+wwtree->Branch("DiscCvB", &DiscCvB, "DiscCvB[100]/F");
+wwtree->Branch("DiscCvL", &DiscCvL, "DiscCvL[100]/F");
+wwtree->Branch("DiscDeepCSVb", &DiscDeepCSVb, "DiscDeepCSVb[100]/F");
+wwtree->Branch("DiscDeepCSVbb", &DiscDeepCSVbb, "DiscDeepCSVbb[100]/F");
+wwtree->Branch("DiscDeepCSVc", &DiscDeepCSVc, "DiscDeepCSVc[100]/F");
+wwtree->Branch("DiscDeepCSVudsg", &DiscDeepCSVudsg, "DiscDeepCSVudsg[100]/F");
+
+wwtree->Branch("NumRecoJetsPFCorrected", &NumRecoJetsPFCorrected, "NumRecoJetsPFCorrected/I");
+wwtree->Branch("JetRecoPtPFCorrected", &JetRecoPtPFCorrected, "JetRecoPtPFCorrected[100]/F");
+wwtree->Branch("JetRecoEtPFCorrected", &JetRecoEtPFCorrected, "JetRecoEtPFCorrected[100]/F");
+wwtree->Branch("JetRecoEtaPFCorrected", &JetRecoEtaPFCorrected, "JetRecoEtaPFCorrected[100]/F");
+wwtree->Branch("JetRecoRapidityPFCorrected", &JetRecoRapidityPFCorrected, "JetRecoRapidityPFCorrected[100]/F");
+wwtree->Branch("JetRecoPhiPFCorrected", &JetRecoPhiPFCorrected, "JetRecoPhiPFCorrected[100]/F");
+wwtree->Branch("JetRecoUNCPFCorrected", &JetRecoUNCPFCorrected, "JetRecoUNCPFCorrected[100]/F");
+
+wwtree->Branch("JetRecoNHFPFCorrected", &JetRecoNHFPFCorrected, "JetRecoNHFPFCorrected[100]/F");
+wwtree->Branch("JetRecoNEMFPFCorrected", &JetRecoNEMFPFCorrected, "JetRecoNEMFPFCorrected[100]/F");
+wwtree->Branch("JetRecoCHFPFCorrected", &JetRecoCHFPFCorrected, "JetRecoCHFPFCorrected[100]/F");
+wwtree->Branch("JetRecoMUFPFCorrected", &JetRecoMUFPFCorrected, "JetRecoMUFPFCorrected[100]/F");
+wwtree->Branch("JetRecoCEMFPFCorrected", &JetRecoCEMFPFCorrected, "JetRecoCEMFPFCorrected[100]/F");
+wwtree->Branch("JetRecoNumConstPFCorrected", &JetRecoNumConstPFCorrected, "JetRecoNumConstPFCorrected[100]/I");
+wwtree->Branch("JetRecoNumNeutralParticlesPFCorrected", &JetRecoNumNeutralParticlesPFCorrected, "JetRecoNumNeutralParticlesPFCorrected[100]/I");
+wwtree->Branch("JetRecoCHMPFCorrected", &JetRecoCHMPFCorrected, "JetRecoCHMPFCorrected[100]/F");
+
+
+wwtree->Branch("JetRecoPUIDPFCorrected", &JetRecoPUIDPFCorrected, "JetRecoPUIDPFCorrected[100]/F");
+wwtree->Branch("JetRecoPUMVAPFCorrected", &JetRecoPUMVAPFCorrected, "JetRecoPUMVAPFCorrected[100]/F");
+
+wwtree->Branch("JetRecoSVMassIVFPFCorrected", &JetRecoSVMassIVFPFCorrected, "JetRecoSVMassIVFPFCorrected[100]/F");
+wwtree->Branch("JetRecoSVMassCorrectedPFCorrected", &JetRecoSVMassCorrectedPFCorrected, "JetRecoSVMassCorrectedPFCorrected[100]/F");
+
+  wwtree->Branch("JetRecoPFlavPFCorrected", &JetRecoPFlavPFCorrected, "JetRecoPFlavPFCorrected[100]/I");
+    wwtree->Branch("JetRecoHFlavPFCorrected", &JetRecoHFlavPFCorrected, "JetRecoHFlavPFCorrected[100]/I");
+
+wwtree->Branch("JetRecoPUIDNEWPFCorrected", &JetRecoPUIDNEWPFCorrected, "JetRecoPUIDNEWPFCorrected[100]/F");
+*/
+
+cout << "here ------------- here ------------ here ----------- here " <<endl;
+
+}
+
+// ------------ method called once each job just after ending the event loop  ------------
+void 
+Select::endJob() 
+{
+std::cout<<"Select::endjob"<<std::endl;
+
+//MET_phi->Write();
+//MET_phi_corr->Write();
+
+using namespace std;
+   cout << "------------------------------->>>>> End Job" << endl;
+f->WriteTObject(wwtree);
+f->WriteTObject(wwtree2);
+delete wwtree;
+delete wwtree2;
+f->Close();
+
+}
+
+// ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
+void
+Select::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  //The following says we do not know what parameters are allowed so do no validation
+  // Please change this to state exactly what you do use, even if it is no parameters
+  edm::ParameterSetDescription desc;
+  desc.setUnknown();
+  descriptions.addDefault(desc);
+}
+
+//define this as a plug-in
+DEFINE_FWK_MODULE(Select);

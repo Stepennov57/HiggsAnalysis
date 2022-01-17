@@ -1,0 +1,102 @@
+for(Int_t kmu=0; kmu<NumRecoMuons; kmu++ )
+     {
+double dataSF = 1.0;//rc.kScaleDT(RecoChargeMuons[kmu], RecoPtMuons[kmu], RecoEtaMuons[kmu], RecoPhiMuons[kmu], 0, 0);
+if(isMC == true)
+{
+dataSF = 1.0;//rc.kScaleAndSmearMC(RecoChargeMuons[kmu], RecoPtMuons[kmu], RecoEtaMuons[kmu], RecoPhiMuons[kmu], NumLayers[kmu], (gRandom->Rndm()), 0, 0);
+//dataSF = rc.kSmearMC(RecoChargeMuons[kmu], RecoPtMuons[kmu], RecoEtaMuons[kmu], RecoPhiMuons[kmu], NumLayers[kmu],);
+}
+
+if(RecoPtMuons[kmu]*dataSF < 10.0 || fabs(RecoEtaMuons[kmu]) > 2.4) continue;
+//if(!(isGlobal[kmu] && NChi[kmu] < 10 && numberOfValidMuonHits[kmu] > 0 && numberOfMatchedStations[kmu] > 1 && numberOfValidPixelHits[kmu] > 0 && trackerLayersWithMeasurement[kmu] > 5 && RecoIsoMuonsDxyvtx[kmu] < 0.2 &&  RecoIsoMuonsDzvtx[kmu] < 0.5) ) { continue;} // tight id
+if(!(isTight[kmu] )) {continue;}
+if(!(RecoIsoMuonsDxyvtx[kmu] < 0.2 &&  RecoIsoMuonsDzvtx[kmu] < 0.5)) continue;
+
+//if((pfIsolation[kmu])/RecoPtMuons[kmu] > 0.15)
+if(trkIsolation[kmu]/RecoPtMuons[kmu] > 0.1)
+{
+//RecoPtMuons[kmu] = -1.0;
+//continue;
+}
+//============================================================
+
+//RecoPtMuons[kmu] = dataSF*RecoPtMuons[kmu];
+//if(event == 96988 ) cout<<"pt:  "<<RecoPtMuons[kmu]<<endl;
+        if(RecoChargeMuons[kmu]>0 && fabs(RecoEtaMuons[kmu]) < 2.4)
+{
+
+VJP.SetPtEtaPhiM(RecoPtMuons[kmu], RecoEtaMuons[kmu], RecoPhiMuons[kmu], 0.105);
+if(VJP.Pt() > 10.0)
+{
+nplus++;
+if(VJP.Pt() > ptm) {  MUPLUS = kmu; ptm = VJP.Pt(); }
+}
+}
+
+ if(RecoChargeMuons[kmu]<0 && fabs(RecoEtaMuons[kmu]) < 2.4)
+ {
+
+VJP.SetPtEtaPhiM(RecoPtMuons[kmu], RecoEtaMuons[kmu], RecoPhiMuons[kmu], 0.105);
+if(VJP.Pt() > 10.0)
+{
+nminus++;
+if(VJP.Pt() > ptp) {MUMINUS = kmu; ptp= VJP.Pt(); }
+}
+
+}
+
+}
+
+//if(event == 96988) cout<<":  "<<ptp<<" , "<<ptm<<endl;
+if( nminus < 1 || nplus < 1) continue;
+if(ptp < 26 && ptm < 26) continue;
+     Int_t ip = MUPLUS;
+        Int_t im = MUMINUS;
+
+
+        Double_t theta1 = 2.*atan(exp(-RecoEtaMuons[ip]));
+      Double_t theta2 = 2.*atan(exp(-RecoEtaMuons[im]));
+      Double_t Mu1Eta = RecoEtaMuons[ip];
+      Double_t Mu2Eta = RecoEtaMuons[im];
+      Double_t Mu1Phi = RecoPhiMuons[ip];
+      Double_t Mu2Phi = RecoPhiMuons[im];
+        Double_t Mu1Pt = RecoPtMuons[ip];
+        Double_t Mu2Pt = RecoPtMuons[im];
+      Double_t px1 = RecoPtMuons[ip]*cos(RecoPhiMuons[ip]);
+      Double_t py1 = RecoPtMuons[ip]*sin(RecoPhiMuons[ip]);
+      Double_t pz1 = RecoPtMuons[ip]/tan(theta1);
+      Double_t px2 = RecoPtMuons[im]*cos(RecoPhiMuons[im]);
+      Double_t py2 = RecoPtMuons[im]*sin(RecoPhiMuons[im]);
+      Double_t pz2 = RecoPtMuons[im]/tan(theta2);
+      Double_t e1 = sqrt(RecoPtMuons[ip]*RecoPtMuons[ip]+pz1*pz1+0.105*0.105);
+      Double_t e2 = sqrt(RecoPtMuons[im]*RecoPtMuons[im]+pz2*pz2+0.105*0.105);
+      Double_t eZ = e1+e2;
+
+         Double_t ptZ = sqrt((px1+px2)*(px1+px2)+(py1+py2)*(py1+py2));
+      Double_t pZZ = pz1+pz2;
+      Double_t phiZ = acos((px1+px2)/ptZ);
+      if(py1+py2<0.) phiZ = -1.*phiZ;
+      Double_t mZ = sqrt(eZ*eZ-ptZ*ptZ-pZZ*pZZ);
+      Float_t YZ = 0.5*log((eZ + pZZ)/(eZ - pZZ));
+
+VMuP.SetPtEtaPhiM(RecoPtMuons[ip], RecoEtaMuons[ip], RecoPhiMuons[ip], 0.105);
+VMuM.SetPtEtaPhiM(RecoPtMuons[im], RecoEtaMuons[im], RecoPhiMuons[im], 0.105);
+
+
+//if((VMuP.Pt() < 28) && (VMuM.Pt() < 28)) continue;
+if((VMuP.Pt() < 26) && (VMuM.Pt() < 26)) continue;
+
+//if(event == 96988) cout<<"here"<<endl;
+
+
+VMuMu = VMuP + VMuM;
+      Float_t M_Z = VMuMu.M();
+
+//if(event == 96988) cout<<"M: "<<M_Z<<endl;
+
+
+if(M_Z < 12.0 || M_Z > 40.0) continue;
+
+
+//if(M_Z > 50) continue;
+
